@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gemini Chatbot</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --background-color: #f5f5f5;
+            --chat-background: #ffffff;
+            --text-color: #333333;
+            --user-message-bg: #e3f2fd;
+            --bot-message-bg: #f0f0f0;
+            --input-border: #ddd;
+            --button-bg: #2196f3;
+            --button-hover: #1976d2;
+            --timestamp-color: #666;
+            --shadow-color: rgba(0,0,0,0.1);
+        }
+
+        [data-theme="dark"] {
+            --background-color: #1a1a1a;
+            --chat-background: #2d2d2d;
+            --text-color: #ffffff;
+            --user-message-bg: #1e3a5f;
+            --bot-message-bg: #363636;
+            --input-border: #404040;
+            --button-bg: #2196f3;
+            --button-hover: #1976d2;
+            --timestamp-color: #888;
+            --shadow-color: rgba(0,0,0,0.3);
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 15px;
+            background-color: var(--background-color);
+            color: var(--text-color);
+            transition: all 0.3s ease;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .header {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-bottom: 15px;
+            position: relative;
+            padding: 0 10px;
+        }
+
+        .header h1 {
+            font-size: 24px;
+            margin: 0;
+        }
+
+        .theme-switcher {
+            position: absolute;
+            right: 10px;
+        }
+
+        .theme-select {
+            padding: 6px;
+            border-radius: 5px;
+            border: 1px solid var(--input-border);
+            background-color: var(--chat-background);
+            color: var(--text-color);
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .main-container {
+            display: flex;
+            flex-direction: column;
+            height: calc(100vh - 100px);
+            max-height: 600px;
+            background-color: var(--chat-background);
+            border-radius: 15px;
+            box-shadow: 0 4px 6px var(--shadow-color);
+            overflow: hidden;
+        }
+
+        .chat-container {
+            flex-grow: 1;
+            padding: 15px;
+            overflow-y: auto;
+        }
+
+        .message {
+            margin: 8px 0;
+            padding: 10px;
+            border-radius: 10px;
+            max-width: 80%;
+            position: relative;
+            animation: fadeIn 0.3s ease;
+            font-size: 14px;
+            line-height: 1.4;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .user-message {
+            background-color: var(--user-message-bg);
+            margin-left: auto;
+            color: var(--text-color);
+        }
+
+        .bot-message {
+            background-color: var(--bot-message-bg);
+            margin-right: auto;
+            color: var(--text-color);
+        }
+
+        .input-container {
+            background-color: var(--chat-background);
+            padding: 15px;
+            border-top: 1px solid var(--input-border);
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        #user-input {
+            flex-grow: 1;
+            padding: 8px 12px;
+            border: 1px solid var(--input-border);
+            border-radius: 8px;
+            background-color: var(--chat-background);
+            color: var(--text-color);
+            font-size: 14px;
+        }
+
+        #user-input:focus {
+            outline: none;
+            border-color: var(--button-bg);
+            box-shadow: 0 0 0 2px rgba(33, 150, 243, 0.1);
+        }
+
+        .send-button {
+            padding: 8px 16px;
+            background-color: var(--button-bg);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 14px;
+        }
+
+        .send-button:hover {
+            background-color: var(--button-hover);
+            transform: translateY(-1px);
+        }
+
+        .send-button i {
+            font-size: 14px;
+        }
+
+        .timestamp {
+            font-size: 0.7em;
+            color: var(--timestamp-color);
+            margin-top: 4px;
+            text-align: right;
+        }
+
+        /* Scrollbar Styling */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--chat-background);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--button-bg);
+            border-radius: 3px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--button-hover);
+        }
+
+        @media (max-width: 768px) {
+            body {
+                padding: 10px;
+            }
+            
+            .main-container {
+                height: calc(100vh - 80px);
+            }
+            
+            .message {
+                font-size: 13px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Gemini Chatbot</h1>
+        <div class="theme-switcher">
+            <select class="theme-select" id="theme-select" onchange="changeTheme(this.value)">
+                <option value="system">System Default</option>
+                <option value="light">Light Mode</option>
+                <option value="dark">Dark Mode</option>
+            </select>
+        </div>
+    </div>
+    <div class="main-container">
+        <div class="chat-container" id="chat-container"></div>
+        <div class="input-container">
+            <input type="file" id="file-upload" style="display: none;" accept="image/*, application/pdf, .doc, .docx">
+            <button class="send-button" onclick="document.getElementById('file-upload').click();">
+                <i class="fas fa-upload"></i> Upload File
+            </button>
+            <input type="text" id="user-input" placeholder="Ask me question..." onkeydown="checkEnter(event)">
+            <button class="send-button" onclick="sendMessage()">
+                <i class="fas fa-paper-plane"></i> Send
+            </button>
+        </div>
+    </div>
+
+    <script>
+        function detectSystemTheme() {
+            return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+        }
+
+        function setTheme(theme) {
+            if (theme === 'system') {
+                theme = detectSystemTheme();
+            }
+            document.documentElement.setAttribute('data-theme', theme);
+            localStorage.setItem('theme', theme);
+            document.getElementById('theme-select').value = localStorage.getItem('theme') || 'system';
+        }
+
+        function changeTheme(theme) {
+            setTheme(theme);
+        }
+
+        setTheme(localStorage.getItem('theme') || 'system');
+        window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+            if (localStorage.getItem('theme') === 'system') {
+                setTheme('system');
+            }
+        });
+
+        function appendMessage(text, isUserMessage) {
+            const messageContainer = document.createElement('div');
+            messageContainer.classList.add('message');
+            messageContainer.classList.add(isUserMessage ? 'user-message' : 'bot-message');
+            messageContainer.innerHTML = text;
+
+            const timestamp = document.createElement('div');
+            timestamp.classList.add('timestamp');
+            timestamp.innerText = new Date().toLocaleTimeString();
+
+            messageContainer.appendChild(timestamp);
+            document.getElementById('chat-container').appendChild(messageContainer);
+            document.getElementById('chat-container').scrollTop = document.getElementById('chat-container').scrollHeight;
+        }
+
+        function sendMessage() {
+            const userInput = document.getElementById('user-input');
+            const message = userInput.value.trim();
+            if (!message) return;
+            appendMessage(message, true);
+            userInput.value = '';
+
+            // Send message to backend
+            $.ajax({
+                url: '/get_response',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({ message }),
+                success: function(response) {
+                    appendMessage(response.response, false);
+                },
+                error: function(error) {
+                    appendMessage("Error: Unable to get response", false);
+                }
+            });
+        }
+
+        function checkEnter(event) {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                sendMessage();
+            }
+        }
+    </script>
+</body>
+</html>
