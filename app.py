@@ -40,10 +40,18 @@ def allowed_file(filename):
 def get_gemini_response(user_input):
     try:
         model = genai.GenerativeModel(gemini_model)
-        response = model.generate_content(user_input)
-        formatted_response = response.text.replace('\n', '<br>')
-        return formatted_response
+        response = model.generate_content(
+            user_input,
+            generation_config={"temperature": 0.7, "max_output_tokens": 2048}
+        )
+        
+        if hasattr(response, 'text'):
+            formatted_response = response.text.replace('\n', '<br>')
+            return formatted_response
+        else:
+            return "The AI couldn't generate a response for this query. Please try rephrasing your question."
     except Exception as e:
+        print(f"Gemini API Error: {str(e)}")
         return f"An error occurred with Gemini AI: {str(e)}"
 
 def extract_text(filepath, file_extension):

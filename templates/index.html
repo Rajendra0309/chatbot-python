@@ -20,6 +20,9 @@
             --shadow-color: rgba(0,0,0,0.1);
             --error-color: #f44336;
             --success-color: #4caf50;
+            --scrollbar-track: #f0f0f0;
+            --scrollbar-thumb: #2196f3;
+            --scrollbar-thumb-hover: #1976d2;
         }
 
         [data-theme="dark"] {
@@ -35,6 +38,9 @@
             --shadow-color: rgba(0,0,0,0.3);
             --error-color: #ff5252;
             --success-color: #66bb6a;
+            --scrollbar-track: #2d2d2d;
+            --scrollbar-thumb: #2196f3;
+            --scrollbar-thumb-hover: #1976d2;
         }
 
         body {
@@ -52,21 +58,35 @@
 
         .header {
             display: flex;
-            justify-content: center;
+            justify-content: space-between;
             align-items: center;
             margin-bottom: 15px;
-            position: relative;
             padding: 0 10px;
+            position: relative;
+        }
+
+        .header-left {
+            flex: 1;
+            display: flex;
+            justify-content: flex-start;
+        }
+
+        .header-center {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+        }
+
+        .header-right {
+            flex: 1;
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
         }
 
         .header h1 {
             font-size: 24px;
             margin: 0;
-        }
-
-        .theme-switcher {
-            position: absolute;
-            right: 10px;
         }
 
         .theme-select {
@@ -94,6 +114,9 @@
             flex-grow: 1;
             padding: 15px;
             overflow-y: auto;
+            scrollbar-width: thin;
+            scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+            position: relative;
         }
 
         .message {
@@ -240,33 +263,38 @@
             max-width: 150px;
         }
 
-        ::-webkit-scrollbar {
-            width: 6px;
+        .chat-container::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
         }
 
-        ::-webkit-scrollbar-track {
-            background: var(--chat-background);
+        .chat-container::-webkit-scrollbar-track {
+            background: var(--scrollbar-track);
+            border-radius: 4px;
+            margin: 4px;
         }
 
-        ::-webkit-scrollbar-thumb {
-            background: var(--button-bg);
-            border-radius: 3px;
+        .chat-container::-webkit-scrollbar-thumb {
+            background: var(--scrollbar-thumb);
+            border-radius: 4px;
+            border: 2px solid var(--chat-background);
         }
 
-        ::-webkit-scrollbar-thumb:hover {
-            background: var(--button-hover);
+        .chat-container::-webkit-scrollbar-thumb:hover {
+            background: var(--scrollbar-thumb-hover);
         }
 
         .clear-chat {
-            position: absolute;
-            right: 80px;
             background-color: transparent;
             color: var(--text-color);
-            border: none;
+            border: 1px solid var(--input-border);
             cursor: pointer;
             font-size: 14px;
             padding: 5px 10px;
             border-radius: 5px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
         }
 
         .clear-chat:hover {
@@ -302,19 +330,38 @@
                 font-size: 13px;
                 max-width: 90%;
             }
-
+            
+            .header {
+                flex-wrap: wrap;
+            }
+            
+            .header-left, .header-center, .header-right {
+                flex: none;
+            }
+            
+            .header-center {
+                order: -1;
+                width: 100%;
+                margin-bottom: 10px;
+            }
+            
             .clear-chat {
-                right: 60px;
                 font-size: 12px;
+                padding: 4px 8px;
             }
         }
     </style>
 </head>
 <body>
     <div class="header">
-        <h1>Gemini Chatbot</h1>
-        <button class="clear-chat" onclick="clearChat()">Clear Chat</button>
-        <div class="theme-switcher">
+        <div class="header-left"></div>
+        <div class="header-center">
+            <h1>Gemini Chatbot</h1>
+        </div>
+        <div class="header-right">
+            <button class="clear-chat" onclick="clearChat()">
+                <i class="fas fa-broom"></i> Clear
+            </button>
             <select class="theme-select" id="theme-select" onchange="changeTheme(this.value)">
                 <option value="system">System Default</option>
                 <option value="light">Light Mode</option>
