@@ -523,6 +523,82 @@
                 margin: 0 6px;
             }
         }
+
+        .theme-dropdown {
+            position: relative;
+            display: inline-block;
+        }
+
+        .theme-dropdown-btn {
+            padding: 8px 14px;
+            border-radius: var(--border-radius);
+            border: 1px solid var(--input-border);
+            background-color: var(--chat-background);
+            color: var(--text-color);
+            cursor: pointer;
+            font-size: 14px;
+            font-family: inherit;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            white-space: nowrap;
+        }
+
+        .theme-dropdown-btn:hover {
+            border-color: var(--button-bg);
+            box-shadow: 0 2px 5px var(--shadow-color);
+        }
+
+        .theme-dropdown-content {
+            display: none;
+            position: absolute;
+            right: 0;
+            top: calc(100% + 8px);
+            background-color: var(--chat-background);
+            min-width: 180px;
+            border-radius: var(--border-radius);
+            box-shadow: 0 5px 15px var(--shadow-color);
+            z-index: 10;
+            overflow: hidden;
+            opacity: 0;
+            transform: translateY(-10px);
+            transition: opacity 0.3s, transform 0.3s;
+        }
+
+        .theme-dropdown-content.show {
+            display: block;
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .theme-option {
+            padding: 10px 16px;
+            color: var(--text-color);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            cursor: pointer;
+            transition: all 0.2s;
+            border-left: 3px solid transparent;
+        }
+
+        .theme-option:hover {
+            background-color: rgba(33, 150, 243, 0.1);
+            border-left-color: var(--button-bg);
+        }
+
+        .theme-option.active {
+            background-color: rgba(33, 150, 243, 0.15);
+            border-left-color: var(--button-bg);
+            font-weight: 500;
+        }
+
+        .theme-icon {
+            font-size: 14px;
+            width: 18px;
+            text-align: center;
+        }
     </style>
 </head>
 <body>
@@ -540,11 +616,26 @@
             <button class="clear-chat" onclick="clearChat()">
                 <i class="fas fa-broom"></i> Clear
             </button>
-            <select class="theme-select" id="theme-select" onchange="changeTheme(this.value)">
-                <option value="system">System Default</option>
-                <option value="light">Light Mode</option>
-                <option value="dark">Dark Mode</option>
-            </select>
+            <div class="theme-dropdown">
+                <button class="theme-dropdown-btn" id="theme-dropdown-btn" onclick="toggleThemeDropdown(event)">
+                    <i class="fas fa-palette"></i>
+                    <span id="current-theme-text">Theme</span>
+                </button>
+                <div class="theme-dropdown-content" id="theme-dropdown-content">
+                    <div class="theme-option" data-theme="system" onclick="selectTheme('system')">
+                        <i class="fas fa-desktop theme-icon"></i>
+                        <span>System Default</span>
+                    </div>
+                    <div class="theme-option" data-theme="light" onclick="selectTheme('light')">
+                        <i class="fas fa-sun theme-icon"></i>
+                        <span>Light Mode</span>
+                    </div>
+                    <div class="theme-option" data-theme="dark" onclick="selectTheme('dark')">
+                        <i class="fas fa-moon theme-icon"></i>
+                        <span>Dark Mode</span>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
     <div class="main-container">
@@ -571,7 +662,45 @@
             if (document.getElementById('chat-container').childElementCount === 0) {
                 appendBotMessage("Hello! I'm Gemini AI. How can I help you today?");
             }
+            updateThemeButtonText(localStorage.getItem('theme') || 'system');
+            markActiveTheme(localStorage.getItem('theme') || 'system');
         });
+
+        function toggleThemeDropdown(event) {
+            event.stopPropagation();
+            document.getElementById('theme-dropdown-content').classList.toggle('show');
+        }
+
+        document.addEventListener('click', function(event) {
+            const dropdown = document.getElementById('theme-dropdown-content');
+            if (dropdown.classList.contains('show') && !event.target.closest('.theme-dropdown')) {
+                dropdown.classList.remove('show');
+            }
+        });
+
+        function selectTheme(theme) {
+            document.getElementById('theme-dropdown-content').classList.remove('show');
+            setTheme(theme);
+            updateThemeButtonText(theme);
+            markActiveTheme(theme);
+        }
+
+        function updateThemeButtonText(theme) {
+            let text = 'System';
+            if (theme === 'light') text = 'Light';
+            if (theme === 'dark') text = 'Dark';
+            document.getElementById('current-theme-text').textContent = text;
+        }
+
+        function markActiveTheme(theme) {
+            const options = document.querySelectorAll('.theme-option');
+            options.forEach(option => {
+                option.classList.remove('active');
+                if (option.dataset.theme === theme) {
+                    option.classList.add('active');
+                }
+            });
+        }
 
         function loadChatHistory() {
             const chatHistory = localStorage.getItem('chatHistory');
@@ -597,16 +726,14 @@
         }
 
         function setTheme(theme) {
-            if (theme === 'system') {
-                theme = detectSystemTheme();
-            }
-            document.documentElement.setAttribute('data-theme', theme);
             localStorage.setItem('theme', theme);
-            document.getElementById('theme-select').value = localStorage.getItem('theme') || 'system';
-        }
-
-        function changeTheme(theme) {
-            setTheme(theme);
+            
+            if (theme === 'system') {
+                const systemTheme = detectSystemTheme();
+                document.documentElement.setAttribute('data-theme', systemTheme);
+            } else {
+                document.documentElement.setAttribute('data-theme', theme);
+            }
         }
 
         function formatMessageContent(text) {
@@ -790,7 +917,6 @@
             showLoadingIndicator();
             setButtonsState(true);
             
-            // Simulate upload progress
             const progress = simulateProgress(2000);
             
             $.ajax({
@@ -820,13 +946,13 @@
             e.target.value = '';
         });
 
-        // Set initial theme
         setTheme(localStorage.getItem('theme') || 'system');
         
-        // Watch for system theme changes
         window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
             if (localStorage.getItem('theme') === 'system') {
                 setTheme('system');
+                updateThemeButtonText('system');
+                markActiveTheme('system');
             }
         });
     </script>
