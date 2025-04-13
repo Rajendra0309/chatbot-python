@@ -176,7 +176,6 @@
             text-align: right;
         }
 
-        /* Scrollbar Styling */
         ::-webkit-scrollbar {
             width: 6px;
         }
@@ -281,7 +280,6 @@
             appendMessage(message, true);
             userInput.value = '';
 
-            // Send message to backend
             $.ajax({
                 url: '/get_response',
                 type: 'POST',
