@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request, jsonify, session
 import os
 import google.generativeai as genai
 from dotenv import load_dotenv
@@ -9,45 +9,57 @@ import pytesseract
 from PIL import Image
 import pdfplumber
 from flask_cors import CORS
+import uuid
+import bleach
+from datetime import datetime
 
 load_dotenv()
 
 app = Flask(__name__)
-
+app.secret_key = os.getenv('SECRET_KEY', os.urandom(24))
 CORS(app)
 
 gemini_api_key = os.getenv('GEMINI_API_KEY')
+gemini_model = os.getenv('GEMINI_MODEL', 'gemini-1.5-pro')
 
 if not gemini_api_key:
     raise ValueError("No Gemini API key found. Please set the GEMINI_API_KEY environment variable.")
 
 genai.configure(api_key=gemini_api_key)
 
-try:
-    for m in genai.list_models():
-        if 'generateContent' in m.supported_generation_methods:
-            print(f"Model: {m.name}")
-except Exception as e:
-    print(f"Error listing models: {e}")
-
 UPLOAD_FOLDER = 'uploads'
 ALLOWED_EXTENSIONS = {'pdf', 'jpg', 'jpeg', 'png', 'doc', 'docx'}
+MAX_CONTENT_LENGTH = 10 * 1024 * 1024  
 
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+app.config['MAX_CONTENT_LENGTH'] = MAX_CONTENT_LENGTH
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 def get_gemini_response(user_input):
     try:
-        model = genai.GenerativeModel('gemini-1.5-pro')
-        
+        model = genai.GenerativeModel(gemini_model)
         response = model.generate_content(user_input)
-
         formatted_response = response.text.replace('\n', '<br>')
         return formatted_response
     except Exception as e:
         return f"An error occurred with Gemini AI: {str(e)}"
+
+def extract_text(filepath, file_extension):
+    extractors = {
+        'pdf': extract_text_from_pdf,
+        'docx': extract_text_from_docx,
+        'jpg': extract_text_from_image,
+        'jpeg': extract_text_from_image,
+        'png': extract_text_from_image
+    }
+    
+    extractor = extractors.get(file_extension)
+    if not extractor:
+        return ""
+    
+    return extractor(filepath)
 
 def extract_text_from_pdf(filepath):
     try:
@@ -55,8 +67,14 @@ def extract_text_from_pdf(filepath):
             reader = PyPDF2.PdfReader(file)
             text = ""
             for page in reader.pages:
-                text += page.extract_text()
-            return text
+                page_text = page.extract_text()
+                if page_text:
+                    text += page_text
+            
+            if text.strip():
+                return text
+       
+        return extract_text_from_pdf_plumber(filepath)
     except Exception as e:
         return f"Error extracting text from PDF: {str(e)}"
 
@@ -83,10 +101,13 @@ def extract_text_from_pdf_plumber(filepath):
         with pdfplumber.open(filepath) as pdf:
             text = ""
             for page in pdf.pages:
-                text += page.extract_text()
+                text += page.extract_text() or ""
             return text
     except Exception as e:
         return f"Error extracting text from PDF using pdfplumber: {str(e)}"
+
+def sanitize_input(text):
+    return bleach.clean(text)
 
 @app.route("/")
 def index():
@@ -94,44 +115,60 @@ def index():
 
 @app.route("/get_response", methods=["POST"])
 def get_response():
-    user_input = request.json.get("message")
-    response_text = get_gemini_response(user_input)
-    return jsonify({"response": response_text})
+    try:
+        user_input = sanitize_input(request.json.get("message", ""))
+        if not user_input:
+            return jsonify({"error": "Empty message"}), 400
+            
+        response_text = get_gemini_response(user_input)
+        return jsonify({"response": response_text})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 @app.route("/upload_file", methods=["POST"])
 def upload_file():
     if 'file' not in request.files:
-        return jsonify({"response": "No file part"}), 400
+        return jsonify({"error": "No file part"}), 400
+        
     file = request.files['file']
     
     if file.filename == '':
-        return jsonify({"response": "No selected file"}), 400
+        return jsonify({"error": "No selected file"}), 400
     
     if file and allowed_file(file.filename):
-        filename = secure_filename(file.filename)
-        filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-        file.save(filepath)
+        try:
+            filename = secure_filename(file.filename)
+            file_id = f"{datetime.now().strftime('%Y%m%d%H%M%S')}_{uuid.uuid4().hex[:8]}"
+            safe_filename = f"{file_id}_{filename}"
+            filepath = os.path.join(app.config['UPLOAD_FOLDER'], safe_filename)
+            
+            if not os.path.exists(app.config['UPLOAD_FOLDER']):
+                os.makedirs(app.config['UPLOAD_FOLDER'])
+                
+            file.save(filepath)
+            
+            file_extension = filename.rsplit('.', 1)[1].lower()
+            extracted_text = extract_text(filepath, file_extension)
+            
+            if not extracted_text:
+                return jsonify({"response": "File uploaded but no text could be extracted. Is this file readable?"})
+            
+            prompt = f"Here's the extracted text from a {file_extension.upper()} file. Please analyze it and provide a comprehensive summary: \n\n{extracted_text}"
+            ai_response = get_gemini_response(prompt)
+            
+            return jsonify({"response": ai_response, "filename": filename})
+            
+        except Exception as e:
+            return jsonify({"error": f"Error processing file: {str(e)}"}), 500
+    
+    return jsonify({"error": "Invalid file type. Only PDF, DOCX, JPG, JPEG, PNG files are allowed."}), 400
 
-        file_extension = filename.rsplit('.', 1)[1].lower()
-        extracted_text = ""
-
-        if file_extension == 'pdf':
-            extracted_text = extract_text_from_pdf(filepath)
-        elif file_extension == 'docx':
-            extracted_text = extract_text_from_docx(filepath)
-        elif file_extension in ['jpg', 'jpeg', 'png']:
-            extracted_text = extract_text_from_image(filepath)
-
-        if not extracted_text:
-            return jsonify({"response": "File uploaded successfully. Do you want to extract text from it?"})
-
-        ai_response = get_gemini_response(extracted_text)
-        return jsonify({"response": ai_response})
-
-    return jsonify({"response": "Invalid file type. Only PDF, DOC, DOCX, JPG, PNG files are allowed."}), 400
+@app.errorhandler(413)
+def request_entity_too_large(error):
+    return jsonify({"error": "File too large. Maximum size is 10MB."}), 413
 
 if __name__ == "__main__":
     if not os.path.exists(UPLOAD_FOLDER):
         os.makedirs(UPLOAD_FOLDER)
     
-    app.run(debug=True)
+    app.run(debug=True, host="0.0.0.0")
