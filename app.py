@@ -46,8 +46,36 @@ def get_gemini_response(user_input):
         )
         
         if hasattr(response, 'text'):
-            formatted_response = response.text.replace('\n', '<br>')
-            return formatted_response
+            lines = response.text.split('\n')
+            in_list = False
+            result = []
+            
+            for line in lines:
+                if line.strip().startswith('* ') or line.strip().startswith('- '):
+                    if not in_list:
+                        result.append('<ul>')
+                        in_list = True
+                    item_text = line.strip()[2:]
+                    result.append(f'<li>{item_text}</li>')
+                elif line.strip().startswith('**') and line.strip().endswith('**'):
+                    if in_list:
+                        result.append('</ul>')
+                        in_list = False
+                    heading_text = line.strip().replace('**', '')
+                    result.append(f'<h4>{heading_text}</h4>')
+                else:
+                    if in_list:
+                        result.append('</ul>')
+                        in_list = False
+                    if line.strip():
+                        result.append(f'<p>{line}</p>')
+                    else:
+                        result.append('<br>')
+            
+            if in_list:
+                result.append('</ul>')
+                
+            return ''.join(result)
         else:
             return "The AI couldn't generate a response for this query. Please try rephrasing your question."
     except Exception as e:
