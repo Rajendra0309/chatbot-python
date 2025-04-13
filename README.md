@@ -7,8 +7,12 @@ A Flask-based web application that integrates with Google's Gemini AI to create 
 - 💬 Real-time chat interface with Gemini AI
 - 📁 Document upload and processing (PDF, DOCX, JPG, PNG)
 - 🔍 Text extraction from various file formats
+- 💾 Chat history persistence using local storage
+- 🔄 Loading indicators during AI processing
 - 🌓 Light/Dark mode toggle with system preference detection
 - 📱 Responsive design for mobile and desktop
+- 🔒 Input sanitization and error handling
+- 🧹 Clear chat functionality
 
 ## Technologies Used
 
@@ -19,6 +23,7 @@ A Flask-based web application that integrates with Google's Gemini AI to create 
   - PDF: PyPDF2, pdfplumber
   - DOCX: python-docx
   - Images: Pillow, pytesseract (OCR)
+- **Security**: Bleach (input sanitization), UUID (secure file naming)
 
 ## Setup and Installation
 
@@ -31,7 +36,7 @@ A Flask-based web application that integrates with Google's Gemini AI to create 
 
 1. Clone this repository:
    ```
-   git clone https://github.com/yourusername/chatbot-python.git
+   git clone https://github.com/Rajendra0309/chatbot-python.git
    cd chatbot-python
    ```
 
@@ -48,7 +53,12 @@ A Flask-based web application that integrates with Google's Gemini AI to create 
 
 4. Create a `.env` file in the root directory with your Gemini API key:
    ```
+   SITE_NAME=Gemini Chatbot
+   SITE_URL=http://localhost:5000
+   GEMINI_MODEL=gemini-1.5-pro
    GEMINI_API_KEY=your_gemini_api_key_here
+   SECRET_KEY=your_secret_key_here
+   DEBUG=True
    ```
 
 5. Run the application:
@@ -68,10 +78,22 @@ A Flask-based web application that integrates with Google's Gemini AI to create 
 
 ### File Upload
 
-1. Click the "Upload File" button
+1. Click the "Upload" button
 2. Select a PDF, DOCX, or image file
 3. The application will extract text from the file and send it to Gemini AI
 4. View the AI's analysis or summary of the document in the chat
+
+### Theme Selection
+
+- Use the dropdown menu in the top-right corner to switch between:
+  - System Default (follows your device settings)
+  - Light Mode
+  - Dark Mode
+
+### Chat Management
+
+- Click the "Clear Chat" button to reset the conversation
+- Chat history is automatically saved in your browser's local storage
 
 ## Project Structure
 
